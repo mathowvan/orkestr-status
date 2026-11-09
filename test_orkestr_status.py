@@ -162,6 +162,12 @@ class HttpTests(unittest.TestCase):
     @mock.patch.object(app,"status",return_value=HtmlTests().sample())
     def test_root_html(self,_):
         code,h,b=self.request("GET","/"); self.assertEqual(code,200); self.assertIn("text/html",h["Content-Type"]); self.assertIn(b"color-scheme:dark",b)
+        self.assertIn(b'<script src="/poll.js" defer></script>',b)
+        self.assertIn("script-src 'self'",h["Content-Security-Policy"]); self.assertIn("connect-src 'self'",h["Content-Security-Policy"])
+    def test_poll_script_is_same_origin_and_served_no_store(self):
+        code,h,b=self.request("GET","/poll.js")
+        self.assertEqual(code,200); self.assertIn("text/javascript",h["Content-Type"]); self.assertEqual(h["Cache-Control"],"no-store")
+        self.assertIn(b"setInterval(refresh, INTERVAL_MS)",b); self.assertEqual(self.request("GET","/poll.js/extra")[0],404)
 
 class PortAndNetworkTests(unittest.TestCase):
     def test_port_precedence_fallback_and_validation(self):

@@ -291,7 +291,7 @@ def render_page(d):
 :root{color-scheme:dark;background:#090d16;color:#e7edf8;font:16px system-ui,-apple-system,"Segoe UI",sans-serif}*{box-sizing:border-box}body{max-width:1120px;margin:auto;padding:clamp(1rem,4vw,2.5rem)}header{padding:1rem 0 1.4rem}h1{font-size:clamp(1.8rem,5vw,2.7rem);margin:.2rem 0;color:#fff}h2{font-size:1.15rem;margin:0 0 1rem;color:#a5c8ff}.muted{color:#b4bfd1;line-height:1.6}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:1rem}section{background:#111a29;border:1px solid #2a3951;border-radius:14px;padding:1.1rem;box-shadow:0 8px 24px #0004}.metric{display:flex;justify-content:space-between;gap:1rem;padding:.65rem 0;border-bottom:1px solid #263348;align-items:flex-start}.metric:last-child{border:0}.metric span{color:#bac7da}.metric strong{text-align:right;overflow-wrap:anywhere;color:#f4f7fc;font-weight:600}ul{list-style:none;margin:0;padding:0}li{display:flex;justify-content:space-between;gap:.8rem;border-bottom:1px solid #263348;padding:.65rem 0}li:last-child{border:0}li span:last-child{text-align:right;overflow-wrap:anywhere;color:#d6e2f4}.wide{grid-column:1/-1}a{color:#9ac4ff}.foot{margin-top:1.3rem;font-size:.92rem}@media(max-width:430px){.metric,li{display:block}.metric strong,li span:last-child{display:block;text-align:left;margin-top:.25rem}}
 .repo-link{overflow-wrap:anywhere}
 </style></head><body><header><h1>系统状态</h1><p class="muted">只读状态概览 · 数据按当前进程与挂载命名空间可见范围采集。</p>
-<p class="muted">公开源码仓库：<a class="repo-link" href="https://github.com/mathowvan/orkestr-status" target="_blank" rel="noopener noreferrer">https://github.com/mathowvan/orkestr-status</a></p></header><main>'''+_section("内存",membody)+_section("磁盘",diskbody)+_section("CPU 与负载",cpu_body)+_section("系统与时间",details)+_section("压力（PSI）",psibody)+_section("网络",netbody+'<p class="muted">'+html.escape(net_note)+'</p>')+_section("常用命令行工具",'<ul>'+''.join(cli)+'</ul>')+_section("语言运行时",'<ul>'+''.join(runtime)+'</ul>')+'''</main><p class="muted foot">内存与磁盘容量按 1024 进位显示（1 GB = 1024MB）。磁盘数据是当前挂载视图，不等同于独享磁盘额度。容器限制和宿主机可见值可能不同；逻辑核数仅表示可见核数，不代表独享核数；出口 IP 可能与入站 IP 不同。不可读项目标为“不可用”。</p><p><a href="/api/status">查看 JSON API</a></p></body></html>'''
+<p class="muted">公开源码仓库：<a class="repo-link" href="https://github.com/mathowvan/orkestr-status" target="_blank" rel="noopener noreferrer">https://github.com/mathowvan/orkestr-status</a></p></header><main>'''+_section("内存",membody)+_section("磁盘",diskbody)+_section("CPU 与负载",cpu_body)+_section("系统与时间",details)+_section("压力（PSI）",psibody)+_section("网络",netbody+'<p class="muted">'+html.escape(net_note)+'</p>')+_section("常用命令行工具",'<ul>'+''.join(cli)+'</ul>')+_section("语言运行时",'<ul>'+''.join(runtime)+'</ul>')+'''</main><p class="muted foot">内存与磁盘容量按 1024 进位显示（1 GB = 1024MB）。磁盘数据是当前挂载视图，不等同于独享磁盘额度。容器限制和宿主机可见值可能不同；逻辑核数仅表示可见核数，不代表独享核数；出口 IP 可能与入站 IP 不同。不可读项目标为“不可用”。</p><p><a href="/api/status">查看 JSON API</a></p><script src="/poll.js" defer></script></body></html>'''
     return page
 
 def format_psi(raw):
@@ -322,7 +322,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,fmt,*args): return
     def send_safe_headers(self,typ):
         self.send_header("Content-Type",typ); self.send_header("X-Content-Type-Options","nosniff"); self.send_header("X-Frame-Options","DENY")
-        self.send_header("Referrer-Policy","no-referrer"); self.send_header("Content-Security-Policy","default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header("Referrer-Policy","no-referrer"); self.send_header("Content-Security-Policy","default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'")
         self.send_header("Cache-Control","no-store"); self.send_header("Connection","close")
     def _respond(self,code,body,typ):
         self.send_response(code); self.send_safe_headers(typ); self.send_header("Content-Length",str(len(body))); self.end_headers()
@@ -331,6 +331,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path=self.path.split("?",1)[0]
         if path=="/healthz": return self._respond(200,b"ok\n","text/plain; charset=utf-8")
+        if path == "/poll.js":
+            try:
+                with open(os.path.join(os.path.dirname(__file__), "poll.js"), "rb") as script:
+                    return self._respond(200, script.read(), "text/javascript; charset=utf-8")
+            except OSError:
+                return self._respond(404,b"not found\n","text/plain; charset=utf-8")
         if path not in ("/","/api/status"): return self._respond(404,b"not found\n","text/plain; charset=utf-8")
         try:
             data=status()
