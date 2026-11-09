@@ -4,14 +4,17 @@
 
 ## 通过 Git 仓库与 Dockerfile 部署
 
-在 Orkestr 新建服务时选择 Git 仓库 `mathowvan/orkestr-status`，使用仓库 Dockerfile 构建，并设置：
+在 Orkestr 创建服务时填写：
 
+- Repository：`mathowvan/orkestr-status`（公开仓库）
 - Branch：`main`
-- Root Directory：`/`
-- Port：`8000`（环境变量 `PORT=8000`）
-- Health Check Path：`/healthz`
+- Port：`8000`
 
-无需额外依赖安装或自定义启动命令。容器以非 root 用户运行；默认不采集网络地址。服务不需要密钥，也不接受用户指定的命令、URL 或文件路径。
+Dockerfile 位于仓库根目录，平台会自动使用它构建。创建服务后点击 **Deploy** 开始部署。应用监听 `PORT` 环境变量；未设置时默认使用 `8000`。健康检查端点 `/healthz` 可独立访问；这里不依赖任何特定的平台健康检查路径设置。
+
+构建使用官方 `python:3.13-alpine` 镜像并通过 `apk upgrade --no-cache` 升级 OS 包。独立测试阶段运行仓库中的全部单元测试，只有测试成功构建才会继续；最终镜像从更新后的 Alpine 基础阶段派生，只复制应用文件，不包含测试文件。Alpine 使用 musl libc 而非 glibc；本应用目前不使用 pip 依赖或原生扩展，但其他依赖或运行时假设可能需要额外验证。构建设置本身不代表 Orkestr 部署已完成，也不预先保证平台扫描结果。
+
+容器以非 root 用户运行；默认不采集网络地址。服务不需要密钥，也不接受用户指定的命令、URL 或文件路径。
 
 ## 本地运行与测试
 
